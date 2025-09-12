@@ -1,0 +1,37 @@
+{
+  "name": "@redeban/either-monad",
+  "version": "1.0.0",
+  "description": "Functional error handling with Either monad for TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "either",
+    "monad",
+    "functional",
+    "error-handling",
+    "typescript"
+  ],
+  "author": "Redeban",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@typescript-eslint/eslint-plugin": "8.43.0",
+    "@typescript-eslint/parser": "8.43.0",
+    "eslint": "9.35.0",
+    "jest": "30.1.3",
+    "ts-jest": "29.4.1",
+    "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "safe-json-stringify": "^1.2.0"
+  }
+}

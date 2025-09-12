@@ -1,0 +1,7 @@
+src/
+tests/
+coverage/
+*.log
+.eslintrc.js
+jest.config.js
+tsconfig.json
