@@ -1133,7 +1133,7 @@ const validateForm = (formData: FormData) => {
             data: {
                 username: formData.username.toLowerCase(),
                 email: formData.email.toLowerCase(),
-                hashedPassword: `hashed_${formData.password}`, // In real app, use proper hashing
+                hashedPassword: `<hashed-password>`, // In real app, use proper hashing
                 age: formData.age,
                 createdAt: new Date().toISOString()
             },
@@ -1154,8 +1154,8 @@ const validateForm = (formData: FormData) => {
 const formSubmission = validateForm({
     username: 'johndoe',
     email: 'john@example.com',
-    password: 'SecurePass123',
-    confirmPassword: 'SecurePass123',
+    password: '<your-secure-password>',
+    confirmPassword: '<your-secure-password>',
     age: 25
 });
 

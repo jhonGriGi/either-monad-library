@@ -7,7 +7,7 @@ export type OK<T> = Either<T, never>;
 export type ErrorType<E> = Either<never, E>;
 
 /** Constructor type for creating error instances */
-type Constructor<T extends Error> = new (message?: string) => T;
+export type Constructor<T extends Error> = new (message?: string) => T;
 
 /**
  * Arguments interface for safeAsync function
@@ -22,12 +22,29 @@ interface SafeAsyncArgs<T, E extends Error> {
 }
 
 /**
- * Safely stringifies objects for error messages
- * @param data - Object to stringify
- * @returns JSON string representation
+ * Inspects objects for error messages with cross-platform compatibility
+ * @param data - Object to inspect
+ * @returns Human-readable string representation
  */
-function safeStringify(data: object): string {
-    return JSON.stringify(data, null, 2);
+function inspectObject(data: object): string {
+    // Node.js environment detection
+    const isNodeJS = typeof process !== 'undefined' && process.versions && process.versions.node;
+    if (isNodeJS && typeof require !== 'undefined') {
+        try {
+            const { inspect } = require('util');
+            return inspect(data, { depth: 2, colors: false });
+        } catch (error) {
+            console.warn('@redeban/either-monad: util.inspect unavailable, falling back to JSON.stringify', error);
+        }
+    }
+    
+    // Browser fallback
+    try {
+        return JSON.stringify(data, null, 2);
+    } catch (error) {
+        console.warn('@redeban/either-monad: JSON.stringify failed for object inspection', error);
+        return '[Object: unable to stringify]';
+    }
 }
 
 /**
@@ -41,7 +58,7 @@ function extractErrorMessage(error: unknown): string {
         : typeof error === 'string'
             ? error
             : typeof error === 'object' && error !== null
-                ? safeStringify(error)
+                ? inspectObject(error)
                 : String(error);
 }
 
@@ -104,11 +121,12 @@ export async function safeAsync<T, E extends Error>({
 }: SafeAsyncArgs<T, E>): Promise<Either<T, E>> {
     try {
         const value = await fn();
-
+        
+        // Type-safe check for Either instances
         if (value instanceof Either) {
-            // Handle the overload case where fn returns Either<U, V>
             return value as Either<T, E>;
         }
+        
         return Either.Ok(value);
     }
     catch (error) {
@@ -278,17 +296,7 @@ export function partition<T, E>(eithers: Either<T, E>[]): [T[], E[]] {
  * ```
  */
 export function traverse<T, U, E>(values: T[], fn: (value: T) => Either<U, E>): Either<U[], E> {
-    const results: U[] = [];
-    
-    for (const value of values) {
-        const either = fn(value);
-        if (either.isError()) {
-            return Either.Error(either.getError());
-        }
-        results.push(either.getValue());
-    }
-    
-    return Either.Ok(results);
+    return sequence(values.map(fn));
 }
 
 /**

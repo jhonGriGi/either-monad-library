@@ -144,8 +144,8 @@ export class Either<T, E> {
      */
     public fold<R>(expressions: FoldExpression<R, E, T>): R {
         return this.isError()
-            ? expressions.fnError(this.error!)
-            : expressions.fnOk(this.value!);
+            ? expressions.fnError(this.error as E)
+            : expressions.fnOk(this.value as T);
     }
 
     /**
@@ -160,7 +160,9 @@ export class Either<T, E> {
      * ```
      */
     public map<U>(fn: (value: T) => U): Either<U, E> {
-        return this.isOk() ? Either.Ok(fn(this.value!)) : Either.Error(this.error!);
+        return this.isOk() 
+            ? Either.Ok(fn(this.value as T)) 
+            : Either.Error(this.error as E);
     }
 
     /**
@@ -176,7 +178,9 @@ export class Either<T, E> {
      * ```
      */
     public flatMap<U>(fn: (value: T) => Either<U, E>): Either<U, E> {
-        return this.isOk() ? fn(this.value!) : Either.Error(this.error!);
+        return this.isOk() 
+            ? fn(this.value as T) 
+            : Either.Error(this.error as E);
     }
 
     /**
@@ -192,7 +196,9 @@ export class Either<T, E> {
      * ```
      */
     public mapError<F>(fn: (error: E) => F): Either<T, F> {
-        return this.isError() ? Either.Error(fn(this.error!)) : Either.Ok(this.value!);
+        return this.isError() 
+            ? Either.Error(fn(this.error as E)) 
+            : Either.Ok(this.value as T);
     }
 
     /**
@@ -206,7 +212,7 @@ export class Either<T, E> {
      * ```
      */
     public getOrElse(defaultValue: T): T {
-        return this.isOk() ? this.value! : defaultValue;
+        return this.isOk() ? this.value as T : defaultValue;
     }
 
     /**
@@ -221,9 +227,11 @@ export class Either<T, E> {
      * ```
      */
     public zip<U>(other: Either<U, E>): Either<[T, U], E> {
-        if (this.isError()) return Either.Error(this.error!);
-        if (other.isError()) return Either.Error(other.error!);
-        return Either.Ok([this.value!, other.value!]);
+        return this.isError() 
+            ? Either.Error(this.error as E)
+            : other.isError() 
+                ? Either.Error(other.getError())
+                : Either.Ok([this.value as T, other.getValue()]);
     }
 
     /**
@@ -255,7 +263,7 @@ export class Either<T, E> {
      * ```
      */
     public filter(predicate: (value: T) => boolean, error: E): Either<T, E> {
-        return this.isOk() && predicate(this.value!) 
+        return this.isOk() && predicate(this.value as T) 
             ? this 
             : Either.Error(error);
     }
@@ -286,7 +294,7 @@ export class Either<T, E> {
      */
     public toPromise(): Promise<T> {
         return this.isOk() 
-            ? Promise.resolve(this.value!)
+            ? Promise.resolve(this.value as T)
             : Promise.reject(this.error);
     }
 
@@ -300,7 +308,7 @@ export class Either<T, E> {
      * ```
      */
     public toOptional(): T | undefined {
-        return this.isOk() ? this.value! : undefined;
+        return this.isOk() ? this.value as T : undefined;
     }
 
     /**
@@ -330,8 +338,8 @@ export class Either<T, E> {
      */
     public recover(fn: (error: E) => T): Either<T, never> {
         return this.isError() 
-            ? Either.Ok(fn(this.error!))
-            : Either.Ok(this.value!);
+            ? Either.Ok(fn(this.error as E))
+            : Either.Ok(this.value as T);
     }
 
     /**
@@ -346,7 +354,7 @@ export class Either<T, E> {
      * ```
      */
     public recoverWith(fn: (error: E) => Either<T, E>): Either<T, E> {
-        return this.isError() ? fn(this.error!) : this;
+        return this.isError() ? fn(this.error as E) : this;
     }
 
     /**
@@ -361,7 +369,7 @@ export class Either<T, E> {
      * ```
      */
     public tap(fn: (value: T) => void): Either<T, E> {
-        if (this.isOk()) fn(this.value!);
+        if (this.isOk()) fn(this.value as T);
         return this;
     }
 
@@ -377,7 +385,7 @@ export class Either<T, E> {
      * ```
      */
     public tapError(fn: (error: E) => void): Either<T, E> {
-        if (this.isError()) fn(this.error!);
+        if (this.isError()) fn(this.error as E);
         return this;
     }
 }

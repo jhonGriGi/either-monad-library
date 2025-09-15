@@ -537,7 +537,7 @@ describe('Utility Functions', () => {
             
             expect(result.isError()).toBe(true);
             expect(result.getError()).toBeInstanceOf(Error);
-            expect(result.getError().message).toBe(JSON.stringify(errorObj, null, 2));
+            expect(result.getError().message).toBe('{ code: 500, message: \'Server error\' }');
         });
 
         it('should handle custom error classes', () => {
@@ -640,7 +640,7 @@ describe('Utility Functions', () => {
             });
             
             expect(result.isError()).toBe(true);
-            expect((result.getError() as Error).message).toBe(JSON.stringify(errorObj, null, 2));
+            expect((result.getError() as Error).message).toBe('{ status: 404, message: \'Not found\' }');
         });
     });
 
@@ -884,12 +884,14 @@ describe('Edge Cases and Integration Tests', () => {
             const circularError: Record<string, unknown> = { message: 'Circular' };
             circularError.self = circularError;
             
-            expect(() => {
-                safeSync({
-                    fn: () => { throw circularError; },
-                    ErrClass: Error
-                });
-            }).toThrow('Converting circular structure to JSON');
+            const result = safeSync({
+                fn: () => { throw circularError; },
+                ErrClass: Error
+            });
+            
+            expect(result.isError()).toBe(true);
+            expect(result.getError().message).toContain('message: \'Circular\'');
+            expect(result.getError().message).toContain('[Circular');
         });
 
         it('should maintain error reference through transformations', () => {
