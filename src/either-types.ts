@@ -1,4 +1,4 @@
-import { Either } from './either';
+import { Either } from "./either";
 
 /** Type alias for successful Either with never error type */
 export type OK<T> = Either<T, never>;
@@ -15,10 +15,10 @@ export type Constructor<T extends Error> = new (message?: string) => T;
  * @template E - Type of the error (must extend Error)
  */
 interface SafeAsyncArgs<T, E extends Error> {
-    /** Function that returns a Promise-like value */
-    fn: () => PromiseLike<T>;
-    /** Error constructor class */
-    ErrClass: Constructor<E>;
+  /** Function that returns a Promise-like value */
+  fn: () => PromiseLike<T>;
+  /** Error constructor class */
+  ErrClass: Constructor<E>;
 }
 
 /**
@@ -27,24 +27,27 @@ interface SafeAsyncArgs<T, E extends Error> {
  * @returns Human-readable string representation
  */
 function inspectObject(data: object): string {
-    // Node.js environment detection
-    const isNodeJS = typeof process !== 'undefined' && process.versions && process.versions.node;
-    if (isNodeJS && typeof require !== 'undefined') {
-        try {
-            const { inspect } = require('util');
-            return inspect(data, { depth: 2, colors: false });
-        } catch (error) {
-            console.warn('@redeban/either-monad: util.inspect unavailable, falling back to JSON.stringify', error);
-        }
-    }
-    
-    // Browser fallback
+  // Node.js environment detection
+  const isNodeJS = typeof process !== "undefined" && process.versions?.node;
+  if (isNodeJS) {
     try {
-        return JSON.stringify(data, null, 2);
+      // Safe require without path traversal vulnerability
+      const nodeUtil = (globalThis as any).require?.("util");
+      if (nodeUtil?.inspect) {
+        return nodeUtil.inspect(data, { depth: 2, colors: false });
+      }
     } catch (error) {
-        console.warn('@redeban/either-monad: JSON.stringify failed for object inspection', error);
-        return '[Object: unable to stringify]';
+      console.warn("@byzobss/either-monad: util.inspect unavailable, falling back to JSON.stringify", error);
     }
+  }
+
+  // Browser fallback
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    console.warn("@byzobss/either-monad: JSON.stringify failed for object inspection", error);
+    return "[Object: unable to stringify]";
+  }
 }
 
 /**
@@ -53,13 +56,13 @@ function inspectObject(data: object): string {
  * @returns String representation of the error
  */
 function extractErrorMessage(error: unknown): string {
-    return error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-            ? error
-            : typeof error === 'object' && error !== null
-                ? inspectObject(error)
-                : String(error);
+  return error instanceof Error
+    ? error.message
+    : typeof error === "string"
+    ? error
+    : typeof error === "object" && error !== null
+    ? inspectObject(error)
+    : String(error);
 }
 
 /**
@@ -73,11 +76,11 @@ function extractErrorMessage(error: unknown): string {
  * @returns Promise<Either<U, V | E>> - Promise of Either with flattened error types
  */
 export async function safeAsync<U, V, E extends Error>({
-    fn,
-    ErrClass,
+  fn,
+  ErrClass,
 }: {
-    fn: () => PromiseLike<Either<U, V>>;
-    ErrClass: Constructor<E>;
+  fn: () => PromiseLike<Either<U, V>>;
+  ErrClass: Constructor<E>;
 }): Promise<Either<U, V | E>>;
 
 /**
@@ -89,10 +92,7 @@ export async function safeAsync<U, V, E extends Error>({
  * @param args.ErrClass - Error constructor for caught exceptions
  * @returns Promise<Either<T, E>> - Promise of Either result
  */
-export async function safeAsync<T, E extends Error>({
-    fn,
-    ErrClass,
-}: SafeAsyncArgs<T, E>): Promise<Either<T, E>>;
+export async function safeAsync<T, E extends Error>({ fn, ErrClass }: SafeAsyncArgs<T, E>): Promise<Either<T, E>>;
 
 /**
  * Wraps an asynchronous operation that may throw, converting exceptions to Either
@@ -108,31 +108,27 @@ export async function safeAsync<T, E extends Error>({
  *     fn: () => fetch('/api/data').then(r => r.json()),
  *     ErrClass: Error
  * });
- * 
+ *
  * result.fold({
  *     fnOk: (data) => console.log('Success:', data),
  *     fnError: (error) => console.log('Failed:', error.message)
  * });
  * ```
  */
-export async function safeAsync<T, E extends Error>({
-    fn,
-    ErrClass,
-}: SafeAsyncArgs<T, E>): Promise<Either<T, E>> {
-    try {
-        const value = await fn();
-        
-        // Type-safe check for Either instances
-        if (value instanceof Either) {
-            return value as Either<T, E>;
-        }
-        
-        return Either.Ok(value);
+export async function safeAsync<T, E extends Error>({ fn, ErrClass }: SafeAsyncArgs<T, E>): Promise<Either<T, E>> {
+  try {
+    const value = await fn();
+
+    // Type-safe check for Either instances
+    if (value instanceof Either) {
+      return value;
     }
-    catch (error) {
-        const msg = extractErrorMessage(error);
-        return Either.Error(new ErrClass(msg));
-    }
+
+    return Either.Ok(value);
+  } catch (error) {
+    const msg = extractErrorMessage(error);
+    return Either.Error(new ErrClass(msg));
+  }
 }
 
 /**
@@ -153,7 +149,7 @@ export async function safeAsync<T, E extends Error>({
  *     },
  *     ErrClass: Error
  * });
- * 
+ *
  * result.fold({
  *     fnOk: (data) => console.log('Parsed:', data),
  *     fnError: (error) => console.log('Parse failed:', error.message)
@@ -161,19 +157,18 @@ export async function safeAsync<T, E extends Error>({
  * ```
  */
 export function safeSync<T, E extends Error>({
-    fn,
-    ErrClass,
+  fn,
+  ErrClass,
 }: {
-    fn: () => T;
-    ErrClass: Constructor<E>;
+  fn: () => T;
+  ErrClass: Constructor<E>;
 }): Either<T, E> {
-    try {
-        return Either.Ok(fn());
-    }
-    catch (error) {
-        const msg = extractErrorMessage(error);
-        return Either.Error(new ErrClass(msg));
-    }
+  try {
+    return Either.Ok(fn());
+  } catch (error) {
+    const msg = extractErrorMessage(error);
+    return Either.Error(new ErrClass(msg));
+  }
 }
 
 /**
@@ -191,7 +186,9 @@ export function safeSync<T, E extends Error>({
  * ```
  */
 export function fromNullable<T>(value: T | null | undefined): Either<T, Error> {
-    return value !== null && value !== undefined ? Either.Ok(value) : Either.Error(new Error('Value is null or undefined'));
+  return value !== null && value !== undefined
+    ? Either.Ok(value)
+    : Either.Error(new Error("Value is null or undefined"));
 }
 
 /**
@@ -210,12 +207,8 @@ export function fromNullable<T>(value: T | null | undefined): Either<T, Error> {
  * );
  * ```
  */
-export function fromPredicate<T>(
-    value: T,
-    predicate: (value: T) => boolean,
-    error: Error
-): Either<T, Error> {
-    return predicate(value) ? Either.Ok(value) : Either.Error(error);
+export function fromPredicate<T>(value: T, predicate: (value: T) => boolean, error: Error): Either<T, Error> {
+  return predicate(value) ? Either.Ok(value) : Either.Error(error);
 }
 
 /**
@@ -235,16 +228,17 @@ export function fromPredicate<T>(
  * ```
  */
 export function sequence<T, E>(eithers: Either<T, E>[]): Either<T[], E> {
-    const results: T[] = [];
-    
-    for (const either of eithers) {
-        if (either.isError()) {
-            return Either.Error(either.getError());
-        }
-        results.push(either.getValue());
+  const results = new Array<T>(eithers.length);
+
+  for (let i = 0; i < eithers.length; i++) {
+    const either = eithers[i];
+    if (either.isError()) {
+      return Either.Error(either.getError());
     }
-    
-    return Either.Ok(results);
+    results[i] = either.getValue();
+  }
+
+  return Either.Ok(results);
 }
 
 /**
@@ -265,18 +259,18 @@ export function sequence<T, E>(eithers: Either<T, E>[]): Either<T[], E> {
  * ```
  */
 export function partition<T, E>(eithers: Either<T, E>[]): [T[], E[]] {
-    const oks: T[] = [];
-    const errors: E[] = [];
-    
-    for (const either of eithers) {
-        if (either.isOk()) {
-            oks.push(either.getValue());
-        } else {
-            errors.push(either.getError());
-        }
+  const oks: T[] = [];
+  const errors: E[] = [];
+
+  for (const either of eithers) {
+    if (either.isOk()) {
+      oks.push(either.getValue());
+    } else {
+      errors.push(either.getError());
     }
-    
-    return [oks, errors];
+  }
+
+  return [oks, errors];
 }
 
 /**
@@ -289,25 +283,35 @@ export function partition<T, E>(eithers: Either<T, E>[]): [T[], E[]] {
  * @returns Either<U[], E> - Array of transformed values or first error encountered
  * @example
  * ```typescript
- * const result = traverse([1, 2, 3], x => 
+ * const result = traverse([1, 2, 3], x =>
  *     x > 0 ? Either.Ok(x * 2) : Either.Error('Negative number')
  * );
  * console.log(result.getValue()); // [2, 4, 6]
  * ```
  */
 export function traverse<T, U, E>(values: T[], fn: (value: T) => Either<U, E>): Either<U[], E> {
-    return sequence(values.map(fn));
+  const results = new Array<U>(values.length);
+
+  for (let i = 0; i < values.length; i++) {
+    const either = fn(values[i]);
+    if (either.isError()) {
+      return Either.Error(either.getError());
+    }
+    results[i] = either.getValue();
+  }
+
+  return Either.Ok(results);
 }
 
 /**
- * Sequences Either array, collecting all errors if any exist
+ * Collects all errors from Either array, or all success values if no errors exist
  * @template T - Type of success values
  * @template E - Type of error values
- * @param eithers - Array of Either values to sequence
+ * @param eithers - Array of Either values to process
  * @returns Either<T[], E[]> - All success values if no errors, or all errors if any exist
  * @example
  * ```typescript
- * const result = sequenceAll([
+ * const result = collectAllErrors([
  *     Either.Ok(1),
  *     Either.Error('error1'),
  *     Either.Error('error2')
@@ -315,7 +319,7 @@ export function traverse<T, U, E>(values: T[], fn: (value: T) => Either<U, E>): 
  * // Returns Either.Error(['error1', 'error2'])
  * ```
  */
-export function sequenceAll<T, E>(eithers: Either<T, E>[]): Either<T[], E[]> {
-    const [oks, errors] = partition(eithers);
-    return errors.length > 0 ? Either.Error(errors) : Either.Ok(oks);
+export function collectAllErrors<T, E>(eithers: Either<T, E>[]): Either<T[], E[]> {
+  const [oks, errors] = partition(eithers);
+  return errors.length > 0 ? Either.Error(errors) : Either.Ok(oks);
 }

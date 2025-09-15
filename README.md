@@ -1,4 +1,4 @@
-# @redeban/either-monad
+# @byzobss/either-monad
 
 A comprehensive TypeScript implementation of the Either monad for functional error handling, providing a complete Result pattern with type-safe operations and extensive utility functions.
 
@@ -20,13 +20,16 @@ The Either monad is a functional programming pattern that represents values with
 
 ### Key Features
 
-- **Type-safe error handling** - Compile-time guarantees for error handling
+- **Type-safe error handling** - Compile-time guarantees for error handling with strict TypeScript types
 - **Complete Result pattern** - All standard monadic operations (map, flatMap, fold, etc.)
-- **Async support** - Built-in async/await compatibility with `safeAsync`
+- **Async support** - Built-in async/await compatibility with `safeAsync` and Promise integration
 - **Rich utility functions** - Comprehensive set of helper functions for common operations
-- **Zero runtime dependencies** - Lightweight with minimal footprint
-- **Full TypeScript support** - Complete type definitions and LSP support
+- **Minimal runtime dependencies** - Only one lightweight dependency for safe JSON serialization
+- **Full TypeScript support** - Complete type definitions with strict mode enabled
 - **Immutable operations** - All transformations return new instances
+- **Cross-platform error handling** - Smart error inspection for both Node.js and browser environments
+- **Comprehensive testing** - 500+ test cases covering edge cases and integration scenarios
+- **Method overloading** - Advanced TypeScript overloads for `safeAsync` with Either return types
 
 ## Architecture
 
@@ -39,24 +42,24 @@ graph TB
         OK[OK&lt;T&gt; Type]
         ErrorType[ErrorType&lt;E&gt; Type]
     end
-    
+
     subgraph "Safe Operation Wrappers"
         safeSync[safeSync&lt;&gt;]
         safeAsync[safeAsync&lt;&gt;]
     end
-    
+
     subgraph "Value Conversion Utilities"
         fromNullable[fromNullable&lt;&gt;]
         fromPredicate[fromPredicate&lt;&gt;]
     end
-    
+
     subgraph "Array Processing Utilities"
         sequence[sequence&lt;&gt;]
         partition[partition&lt;&gt;]
         traverse[traverse&lt;&gt;]
-        sequenceAll[sequenceAll&lt;&gt;]
+        collectAllErrors[collectAllErrors&lt;&gt;]
     end
-    
+
     subgraph "Method Categories"
         Transform[Transformation Methods<br/>map, flatMap, mapError]
         Combine[Combination Methods<br/>zip, zipWith]
@@ -65,7 +68,7 @@ graph TB
         Recover[Recovery Methods<br/>recover, recoverWith]
         SideEffect[Side Effect Methods<br/>tap, tapError]
     end
-    
+
     Either --> OK
     Either --> ErrorType
     Either --> Transform
@@ -74,7 +77,7 @@ graph TB
     Either --> Convert
     Either --> Recover
     Either --> SideEffect
-    
+
     safeSync --> Either
     safeAsync --> Either
     fromNullable --> Either
@@ -82,7 +85,7 @@ graph TB
     sequence --> Either
     partition --> Either
     traverse --> Either
-    sequenceAll --> Either
+    collectAllErrors --> Either
 ```
 
 ### Data Flow Diagram
@@ -92,20 +95,20 @@ flowchart LR
     Input[Input Value/Operation] --> Decision{Operation Result}
     Decision -->|Success| OK[Either.Ok&lt;T&gt;]
     Decision -->|Failure| Error[Either.Error&lt;E&gt;]
-    
+
     OK --> Transform[Transform Operations]
     Error --> Transform
-    
+
     Transform --> Chain[Chain Operations]
     Chain --> Output[Final Result]
-    
+
     subgraph "Transform Operations"
         map[map: T → U]
         flatMap[flatMap: T → Either&lt;U, E&gt;]
         mapError[mapError: E → F]
         filter[filter: T → boolean]
     end
-    
+
     subgraph "Chain Operations"
         fold[fold: Pattern Match]
         recover[recover: E → T]
@@ -120,26 +123,26 @@ graph TD
     index[index.ts<br/>Public API] --> either[either.ts<br/>Core Either Class]
     index --> types[either-types.ts<br/>Utility Functions]
     either --> types
-    
+
     subgraph "Build Output"
         dist[dist/<br/>Compiled JS]
         declarations[index.d.ts<br/>Type Declarations]
     end
-    
+
     subgraph "Configuration"
         tsconfig[tsconfig.json<br/>TypeScript Config]
         eslint[.eslintrc.js<br/>Linting Rules]
         jest[jest.config.js<br/>Test Config]
     end
-    
+
     subgraph "Tests"
         tests[tests/either.test.ts<br/>Test Suite]
     end
-    
+
     either --> dist
     types --> dist
     index --> declarations
-    
+
     tsconfig --> dist
     eslint --> either
     eslint --> types
@@ -149,13 +152,26 @@ graph TD
 ## Installation
 
 ```bash
-npm install @redeban/either-monad
+npm install @byzobss/either-monad
 ```
 
 ### Requirements
 
 - Node.js >= 14
 - TypeScript >= 4.5 (for development)
+
+### Dependencies
+
+**Runtime Dependencies:**
+
+- `safe-json-stringify` ^1.2.0 - For safe JSON serialization of error objects
+
+**Development Dependencies:**
+
+- TypeScript 5.9.2 - Type checking and compilation
+- Jest 30.1.3 - Testing framework
+- ESLint 8.43.0 - Code linting
+- @typescript-eslint/\* - TypeScript-specific linting rules
 
 ## Core Concepts
 
@@ -164,30 +180,70 @@ npm install @redeban/either-monad
 The `Either<T, E>` type represents a value that can be either successful (`Ok<T>`) or failed (`Error<E>`):
 
 ```typescript
-type Either<T, E> = Ok<T> | Error<E>
-type OK<T> = Either<T, never>        // Success type
-type ErrorType<E> = Either<never, E> // Error type
+type Either<T, E> = Ok<T> | Error<E>;
+type OK<T> = Either<T, never>; // Success type
+type ErrorType<E> = Either<never, E>; // Error type
+type Constructor<T extends Error> = new (message?: string) => T; // Error constructor type
+```
+
+### Advanced Technical Features
+
+#### Smart Error Message Extraction
+
+The library includes sophisticated error handling that can extract meaningful messages from various error types:
+
+```typescript
+// Handles Error objects, strings, objects, and unknown types
+const result = safeSync({
+  fn: () => {
+    throw { code: 500, message: "Server error" };
+  },
+  ErrClass: Error,
+});
+// Automatically converts object to JSON string in error message
+```
+
+#### Cross-Platform Error Inspection
+
+Built-in support for both Node.js and browser environments:
+
+```typescript
+// In Node.js: uses util.inspect for rich object representation
+// In browsers: falls back to JSON.stringify
+// Handles circular references gracefully
+```
+
+#### Method Overloading for safeAsync
+
+Advanced TypeScript overloads handle nested Either types:
+
+```typescript
+// When fn() returns Either<U, V>
+safeAsync<U, V, E>({ fn: () => Promise<Either<U, V>>, ErrClass }): Promise<Either<U, V | E>>
+
+// When fn() returns T (not Either)
+safeAsync<T, E>({ fn: () => Promise<T>, ErrClass }): Promise<Either<T, E>>
 ```
 
 ### Type Guards and Safe Access
 
 ```typescript
-import { Either } from '@redeban/either-monad';
+import { Either } from "@byzobss/either-monad";
 
 const userAge: Either<number, Error> = Either.Ok(25);
-const invalidAge: Either<number, Error> = Either.Error(new Error('Invalid age'));
+const invalidAge: Either<number, Error> = Either.Error(new Error("Invalid age"));
 
 // Type-safe access with type guards
 if (userAge.isOk()) {
-    // TypeScript knows userAge is OK<number>
-    const age: number = userAge.getValue(); // Safe access
-    console.log(`User is ${age} years old`);
+  // TypeScript knows userAge is OK<number>
+  const age: number = userAge.getValue(); // Safe access
+  console.log(`User is ${age} years old`);
 }
 
 if (invalidAge.isError()) {
-    // TypeScript knows invalidAge is ErrorType<Error>
-    const errorMessage: string = invalidAge.getError().message;
-    console.log(`Error: ${errorMessage}`);
+  // TypeScript knows invalidAge is ErrorType<Error>
+  const errorMessage: string = invalidAge.getError().message;
+  console.log(`Error: ${errorMessage}`);
 }
 ```
 
@@ -328,7 +384,7 @@ filter(predicate: (value: T) => boolean, error: E): Either<T, E>
  * @param fn - Function that returns an Either
  * @returns Either<U, E> - Result of the function
  */
-find<U>(fn: (value: T) => Either<U, E>): Either<U, E>
+chain<U>(fn: (value: T) => Either<U, E>): Either<U, E>
 ```
 
 ### Conversion Methods
@@ -467,11 +523,11 @@ partition<T, E>(eithers: Either<T, E>[]): [T[], E[]]
 traverse<T, U, E>(values: T[], fn: (value: T) => Either<U, E>): Either<U[], E>
 
 /**
- * Sequences Either array, collecting all errors if any exist
+ * Collects all errors from Either array, or all success values if no errors exist
  * @param eithers - Array of Either values
- * @returns Either<T[], E[]> - All values or all errors
+ * @returns Either<T[], E[]> - All success values if no errors, or all errors if any exist
  */
-sequenceAll<T, E>(eithers: Either<T, E>[]): Either<T[], E[]>
+collectAllErrors<T, E>(eithers: Either<T, E>[]): Either<T[], E[]>
 ```
 
 ## Usage Examples
@@ -479,27 +535,25 @@ sequenceAll<T, E>(eithers: Either<T, E>[]): Either<T[], E[]>
 ### Basic Either Operations
 
 ```typescript
-import { Either } from '@redeban/either-monad';
+import { Either } from "@byzobss/either-monad";
 
 // Creating Either values
-const validUser = Either.Ok({ 
-    id: 123, 
-    name: 'Alice Johnson', 
-    email: 'alice@example.com' 
+const validUser = Either.Ok({
+  id: 123,
+  name: "Alice Johnson",
+  email: "alice@example.com",
 });
 
-const invalidUser = Either.Error(new Error('User not found'));
+const invalidUser = Either.Error(new Error("User not found"));
 
 // Type-safe value access
 if (validUser.isOk()) {
-    const user = validUser.getValue();
-    console.log(`Welcome, ${user.name}!`); // Welcome, Alice Johnson!
+  const user = validUser.getValue();
+  console.log(`Welcome, ${user.name}!`); // Welcome, Alice Johnson!
 }
 
 // Safe value extraction with default
-const userName = validUser
-    .map(user => user.name)
-    .getOrElse('Anonymous User');
+const userName = validUser.map((user) => user.name).getOrElse("Anonymous User");
 
 console.log(userName); // Alice Johnson
 ```
@@ -507,95 +561,94 @@ console.log(userName); // Alice Johnson
 ### Safe Operations with safeSync and safeAsync
 
 ```typescript
-import { safeSync, safeAsync } from '@redeban/either-monad';
+import { safeSync, safeAsync } from "@byzobss/either-monad";
 
 // Safe synchronous operations
 const divisionResult = safeSync({
-    fn: () => {
-        const dividend = 100;
-        const divisor = 0;
-        if (divisor === 0) {
-            throw new Error('Division by zero is not allowed');
-        }
-        return dividend / divisor;
-    },
-    ErrClass: Error
+  fn: () => {
+    const dividend = 100;
+    const divisor = 0;
+    if (divisor === 0) {
+      throw new Error("Division by zero is not allowed");
+    }
+    return dividend / divisor;
+  },
+  ErrClass: Error,
 });
 
 divisionResult.fold({
-    fnOk: (quotient) => console.log(`Result: ${quotient}`),
-    fnError: (error) => console.log(`Calculation failed: ${error.message}`)
+  fnOk: (quotient) => console.log(`Result: ${quotient}`),
+  fnError: (error) => console.log(`Calculation failed: ${error.message}`),
 });
 
 // Safe asynchronous operations
 const fetchUserProfile = async (userId: string) => {
-    const profileResult = await safeAsync({
-        fn: () => fetch(`/api/users/${userId}/profile`).then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-            return res.json();
-        }),
-        ErrClass: Error
-    });
-    
-    return profileResult
-        .map(profile => ({
-            ...profile,
-            displayName: `${profile.firstName} ${profile.lastName}`,
-            isActive: profile.lastLoginDate > Date.now() - 30 * 24 * 60 * 60 * 1000
-        }))
-        .mapError(error => new Error(`Failed to fetch user profile: ${error.message}`));
+  const profileResult = await safeAsync({
+    fn: () =>
+      fetch(`/api/users/${userId}/profile`).then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return res.json();
+      }),
+    ErrClass: Error,
+  });
+
+  return profileResult
+    .map((profile) => ({
+      ...profile,
+      displayName: `${profile.firstName} ${profile.lastName}`,
+      isActive: profile.lastLoginDate > Date.now() - 30 * 24 * 60 * 60 * 1000,
+    }))
+    .mapError((error) => new Error(`Failed to fetch user profile: ${error.message}`));
 };
 ```
 
 ### Chaining and Transformation Operations
 
 ```typescript
-import { Either, fromNullable, fromPredicate } from '@redeban/either-monad';
+import { Either, fromNullable, fromPredicate } from "@byzobss/either-monad";
 
 interface UserInput {
-    email?: string;
-    age?: number;
-    name?: string;
+  email?: string;
+  age?: number;
+  name?: string;
 }
 
 const validateAndProcessUser = (userInput: UserInput) => {
-    return fromNullable(userInput.email)
-        .flatMap(email => fromPredicate(
-            email,
-            email => email.includes('@') && email.includes('.'),
-            new Error('Invalid email format')
-        ))
-        .map(email => email.toLowerCase().trim())
-        .zip(fromNullable(userInput.age))
-        .flatMap(([email, age]) => fromPredicate(
-            age,
-            age => age >= 18 && age <= 120,
-            new Error('Age must be between 18 and 120')
-        ).map(validAge => ({ email, age: validAge })))
-        .zip(fromNullable(userInput.name))
-        .map(([userData, name]) => ({
-            ...userData,
-            name: name.trim(),
-            id: Math.random().toString(36).substr(2, 9),
-            createdAt: new Date().toISOString()
-        }))
-        .recover(error => {
-            console.warn(`User validation failed: ${error.message}`);
-            return {
-                email: 'unknown@example.com',
-                age: 0,
-                name: 'Unknown User',
-                id: 'unknown',
-                createdAt: new Date().toISOString()
-            };
-        });
+  return fromNullable(userInput.email)
+    .flatMap((email) =>
+      fromPredicate(email, (email) => email.includes("@") && email.includes("."), new Error("Invalid email format"))
+    )
+    .map((email) => email.toLowerCase().trim())
+    .zip(fromNullable(userInput.age))
+    .flatMap(([email, age]) =>
+      fromPredicate(age, (age) => age >= 18 && age <= 120, new Error("Age must be between 18 and 120")).map(
+        (validAge) => ({ email, age: validAge })
+      )
+    )
+    .zip(fromNullable(userInput.name))
+    .map(([userData, name]) => ({
+      ...userData,
+      name: name.trim(),
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+    }))
+    .recover((error) => {
+      console.warn(`User validation failed: ${error.message}`);
+      return {
+        email: "unknown@example.com",
+        age: 0,
+        name: "Unknown User",
+        id: "unknown",
+        createdAt: new Date().toISOString(),
+      };
+    });
 };
 
 // Usage example
 const userResult = validateAndProcessUser({
-    email: 'john.doe@example.com',
-    age: 28,
-    name: '  John Doe  '
+  email: "john.doe@example.com",
+  age: 28,
+  name: "  John Doe  ",
 });
 
 console.log(userResult.getValue());
@@ -605,395 +658,392 @@ console.log(userResult.getValue());
 ### Working with Arrays and Collections
 
 ```typescript
-import { sequence, traverse, partition, sequenceAll } from '@redeban/either-monad';
+import { sequence, traverse, partition, collectAllErrors } from "@byzobss/either-monad";
 
 // Processing multiple user IDs
-const userIds = ['user1', 'user2', 'user3', 'invalid-user'];
+const userIds = ["user1", "user2", "user3", "invalid-user"];
 
 const fetchMultipleUsers = async (ids: string[]) => {
-    // Using traverse to fetch and validate all users
-    const userResults = await traverse(ids, async (userId) => {
-        return safeAsync({
-            fn: () => fetch(`/api/users/${userId}`).then(res => {
-                if (!res.ok) throw new Error(`User ${userId} not found`);
-                return res.json();
-            }),
-            ErrClass: Error
-        });
+  // Using traverse to fetch and validate all users
+  const userResults = await traverse(ids, async (userId) => {
+    return safeAsync({
+      fn: () =>
+        fetch(`/api/users/${userId}`).then((res) => {
+          if (!res.ok) throw new Error(`User ${userId} not found`);
+          return res.json();
+        }),
+      ErrClass: Error,
     });
-    
-    return userResults;
+  });
+
+  return userResults;
 };
 
 // Combining validation results
 const validateUserEmails = (emails: string[]) => {
-    const validationResults = emails.map(email => 
-        fromPredicate(
-            email,
-            email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-            new Error(`Invalid email: ${email}`)
-        )
-    );
-    
-    // Get all valid emails or first error
-    const allValidEmails = sequence(validationResults);
-    
-    // Or separate valid and invalid emails
-    const [validEmails, invalidEmails] = partition(validationResults);
-    
-    return {
-        allValid: allValidEmails,
-        validEmails,
-        invalidEmails: invalidEmails.map(err => err.message)
-    };
+  const validationResults = emails.map((email) =>
+    fromPredicate(email, (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), new Error(`Invalid email: ${email}`))
+  );
+
+  // Get all valid emails or first error
+  const allValidEmails = sequence(validationResults);
+
+  // Or separate valid and invalid emails
+  const [validEmails, invalidEmails] = partition(validationResults);
+
+  return {
+    allValid: allValidEmails,
+    validEmails,
+    invalidEmails: invalidEmails.map((err) => err.message),
+  };
 };
 
 // Usage
 const emailValidation = validateUserEmails([
-    'alice@example.com',
-    'invalid-email',
-    'bob@company.org',
-    'another-invalid'
+  "alice@example.com",
+  "invalid-email",
+  "bob@company.org",
+  "another-invalid",
 ]);
 
-console.log('Valid emails:', emailValidation.validEmails);
-console.log('Invalid emails:', emailValidation.invalidEmails);
+console.log("Valid emails:", emailValidation.validEmails);
+console.log("Invalid emails:", emailValidation.invalidEmails);
 ```
 
 ### Advanced Error Recovery Patterns
 
 ```typescript
-import { Either, safeAsync } from '@redeban/either-monad';
+import { Either, safeAsync } from "@byzobss/either-monad";
 
 class NetworkError extends Error {
-    constructor(message: string, public statusCode: number) {
-        super(message);
-        this.name = 'NetworkError';
-    }
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "NetworkError";
+  }
 }
 
 class ValidationError extends Error {
-    constructor(message: string, public field: string) {
-        super(message);
-        this.name = 'ValidationError';
-    }
+  constructor(message: string, public field: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
 }
 
 const robustApiCall = async (endpoint: string, retries: number = 3) => {
-    const attemptRequest = async (attempt: number): Promise<Either<any, Error>> => {
-        return safeAsync({
-            fn: () => fetch(endpoint).then(res => {
-                if (!res.ok) {
-                    throw new NetworkError(`Request failed: ${res.statusText}`, res.status);
-                }
-                return res.json();
-            }),
-            ErrClass: NetworkError
-        }).then(result => 
-            result.recoverWith(error => {
-                if (error instanceof NetworkError && error.statusCode >= 500 && attempt < retries) {
-                    console.log(`Attempt ${attempt} failed, retrying...`);
-                    return attemptRequest(attempt + 1);
-                }
-                return Either.Error(error);
-            })
-        );
-    };
-    
-    return attemptRequest(1)
-        .then(result => result.recover(error => {
-            console.error(`All attempts failed: ${error.message}`);
-            return { error: true, message: 'Service temporarily unavailable' };
-        }));
+  const attemptRequest = async (attempt: number): Promise<Either<any, Error>> => {
+    return safeAsync({
+      fn: () =>
+        fetch(endpoint).then((res) => {
+          if (!res.ok) {
+            throw new NetworkError(`Request failed: ${res.statusText}`, res.status);
+          }
+          return res.json();
+        }),
+      ErrClass: NetworkError,
+    }).then((result) =>
+      result.recoverWith((error) => {
+        if (error instanceof NetworkError && error.statusCode >= 500 && attempt < retries) {
+          console.log(`Attempt ${attempt} failed, retrying...`);
+          return attemptRequest(attempt + 1);
+        }
+        return Either.Error(error);
+      })
+    );
+  };
+
+  return attemptRequest(1).then((result) =>
+    result.recover((error) => {
+      console.error(`All attempts failed: ${error.message}`);
+      return { error: true, message: "Service temporarily unavailable" };
+    })
+  );
 };
 
 // Pipeline with multiple recovery strategies
 const processUserData = async (userData: any) => {
-    return Either.Ok(userData)
-        .flatMap(data => fromPredicate(
-            data,
-            data => data && typeof data === 'object',
-            new ValidationError('Invalid data format', 'root')
-        ))
-        .flatMap(data => fromNullable(data.email)
-            .mapError(() => new ValidationError('Email is required', 'email')))
-        .tap(data => console.log(`Processing user: ${data.email}`))
-        .recoverWith(error => {
-            if (error instanceof ValidationError) {
-                console.warn(`Validation error in ${error.field}: ${error.message}`);
-                return Either.Ok({ email: 'default@example.com', validated: false });
-            }
-            return Either.Error(error);
-        })
-        .tapError(error => console.error(`Unrecoverable error: ${error.message}`));
+  return Either.Ok(userData)
+    .flatMap((data) =>
+      fromPredicate(
+        data,
+        (data) => data && typeof data === "object",
+        new ValidationError("Invalid data format", "root")
+      )
+    )
+    .flatMap((data) => fromNullable(data.email).mapError(() => new ValidationError("Email is required", "email")))
+    .tap((data) => console.log(`Processing user: ${data.email}`))
+    .recoverWith((error) => {
+      if (error instanceof ValidationError) {
+        console.warn(`Validation error in ${error.field}: ${error.message}`);
+        return Either.Ok({ email: "default@example.com", validated: false });
+      }
+      return Either.Error(error);
+    })
+    .tapError((error) => console.error(`Unrecoverable error: ${error.message}`));
 };
 ```
 
 ### Modern Async/Await Patterns
 
 ```typescript
-import { Either, safeAsync, fromNullable, sequence } from '@redeban/either-monad';
+import { Either, safeAsync, fromNullable, sequence } from "@byzobss/either-monad";
 
 // Clean async/await API calls without .then/.catch
 const fetchUserData = async (userId: string): Promise<Either<User, Error>> => {
-    const userResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch(`/api/users/${userId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch user: ${response.statusText}`);
-            }
-            return response.json();
-        },
-        ErrClass: Error
-    });
-    
-    return userResult.map(user => ({
-        ...user,
-        fullName: `${user.firstName} ${user.lastName}`,
-        isActive: user.status === 'active'
-    }));
+  const userResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch(`/api/users/${userId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    ErrClass: Error,
+  });
+
+  return userResult.map((user) => ({
+    ...user,
+    fullName: `${user.firstName} ${user.lastName}`,
+    isActive: user.status === "active",
+  }));
 };
 
 // Sequential async operations with error handling
 const processUserWorkflow = async (userId: string) => {
-    // Step 1: Fetch user
-    const userResult = await fetchUserData(userId);
-    if (userResult.isError()) {
-        return Either.Error(`User fetch failed: ${userResult.getError().message}`);
-    }
-    
-    const user = userResult.getValue();
-    
-    // Step 2: Fetch user preferences
-    const preferencesResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch(`/api/users/${userId}/preferences`);
-            return response.json();
-        },
-        ErrClass: Error
-    });
-    
-    if (preferencesResult.isError()) {
-        return Either.Error(`Preferences fetch failed: ${preferencesResult.getError().message}`);
-    }
-    
-    // Step 3: Update user profile
-    const updateResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch(`/api/users/${userId}/profile`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...user,
-                    preferences: preferencesResult.getValue(),
-                    lastUpdated: new Date().toISOString()
-                })
-            });
-            return response.json();
-        },
-        ErrClass: Error
-    });
-    
-    return updateResult.map(updatedUser => ({
-        success: true,
-        user: updatedUser,
-        message: 'User profile updated successfully'
-    }));
+  // Step 1: Fetch user
+  const userResult = await fetchUserData(userId);
+  if (userResult.isError()) {
+    return Either.Error(`User fetch failed: ${userResult.getError().message}`);
+  }
+
+  const user = userResult.getValue();
+
+  // Step 2: Fetch user preferences
+  const preferencesResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch(`/api/users/${userId}/preferences`);
+      return response.json();
+    },
+    ErrClass: Error,
+  });
+
+  if (preferencesResult.isError()) {
+    return Either.Error(`Preferences fetch failed: ${preferencesResult.getError().message}`);
+  }
+
+  // Step 3: Update user profile
+  const updateResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch(`/api/users/${userId}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...user,
+          preferences: preferencesResult.getValue(),
+          lastUpdated: new Date().toISOString(),
+        }),
+      });
+      return response.json();
+    },
+    ErrClass: Error,
+  });
+
+  return updateResult.map((updatedUser) => ({
+    success: true,
+    user: updatedUser,
+    message: "User profile updated successfully",
+  }));
 };
 
 // Parallel async operations with Either
 const fetchUserDashboardData = async (userId: string) => {
-    // Execute multiple async operations in parallel
-    const [userResult, ordersResult, notificationsResult] = await Promise.all([
-        safeAsync({
-            fn: async () => {
-                const response = await fetch(`/api/users/${userId}`);
-                return response.json();
-            },
-            ErrClass: Error
-        }),
-        safeAsync({
-            fn: async () => {
-                const response = await fetch(`/api/users/${userId}/orders`);
-                return response.json();
-            },
-            ErrClass: Error
-        }),
-        safeAsync({
-            fn: async () => {
-                const response = await fetch(`/api/users/${userId}/notifications`);
-                return response.json();
-            },
-            ErrClass: Error
-        })
-    ]);
-    
-    // Combine all results using sequence
-    const combinedResult = sequence([userResult, ordersResult, notificationsResult]);
-    
-    return combinedResult.map(([user, orders, notifications]) => ({
-        user,
-        orders,
-        notifications,
-        summary: {
-            totalOrders: orders.length,
-            unreadNotifications: notifications.filter(n => !n.read).length,
-            lastLoginDate: user.lastLoginDate
-        }
-    }));
+  // Execute multiple async operations in parallel
+  const [userResult, ordersResult, notificationsResult] = await Promise.all([
+    safeAsync({
+      fn: async () => {
+        const response = await fetch(`/api/users/${userId}`);
+        return response.json();
+      },
+      ErrClass: Error,
+    }),
+    safeAsync({
+      fn: async () => {
+        const response = await fetch(`/api/users/${userId}/orders`);
+        return response.json();
+      },
+      ErrClass: Error,
+    }),
+    safeAsync({
+      fn: async () => {
+        const response = await fetch(`/api/users/${userId}/notifications`);
+        return response.json();
+      },
+      ErrClass: Error,
+    }),
+  ]);
+
+  // Combine all results using sequence
+  const combinedResult = sequence([userResult, ordersResult, notificationsResult]);
+
+  return combinedResult.map(([user, orders, notifications]) => ({
+    user,
+    orders,
+    notifications,
+    summary: {
+      totalOrders: orders.length,
+      unreadNotifications: notifications.filter((n) => !n.read).length,
+      lastLoginDate: user.lastLoginDate,
+    },
+  }));
 };
 
 // Error recovery with async/await
 const robustDataFetch = async (url: string, maxRetries: number = 3) => {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const result = await safeAsync({
-            fn: async () => {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            },
-            ErrClass: Error
-        });
-        
-        if (result.isOk()) {
-            return result;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await safeAsync({
+      fn: async () => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
-        lastError = result.getError();
-        
-        if (attempt < maxRetries) {
-            console.log(`Attempt ${attempt} failed, retrying in ${attempt * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-        }
+        return response.json();
+      },
+      ErrClass: Error,
+    });
+
+    if (result.isOk()) {
+      return result;
     }
-    
-    return Either.Error(new Error(`All ${maxRetries} attempts failed. Last error: ${lastError?.message}`));
+
+    lastError = result.getError();
+
+    if (attempt < maxRetries) {
+      console.log(`Attempt ${attempt} failed, retrying in ${attempt * 1000}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+
+  return Either.Error(new Error(`All ${maxRetries} attempts failed. Last error: ${lastError?.message}`));
 };
 
 // Async validation pipeline
-const validateAndCreateUser = async (userData: {
-    email: string;
-    username: string;
-    password: string;
-}) => {
-    // Step 1: Validate email uniqueness
-    const emailCheckResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch(`/api/users/check-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: userData.email })
-            });
-            const data = await response.json();
-            if (data.exists) {
-                throw new Error('Email already exists');
-            }
-            return data;
-        },
-        ErrClass: Error
-    });
-    
-    if (emailCheckResult.isError()) {
-        return Either.Error(`Email validation failed: ${emailCheckResult.getError().message}`);
-    }
-    
-    // Step 2: Validate username uniqueness
-    const usernameCheckResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch(`/api/users/check-username`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: userData.username })
-            });
-            const data = await response.json();
-            if (data.exists) {
-                throw new Error('Username already exists');
-            }
-            return data;
-        },
-        ErrClass: Error
-    });
-    
-    if (usernameCheckResult.isError()) {
-        return Either.Error(`Username validation failed: ${usernameCheckResult.getError().message}`);
-    }
-    
-    // Step 3: Create user
-    const createUserResult = await safeAsync({
-        fn: async () => {
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...userData,
-                    createdAt: new Date().toISOString(),
-                    id: crypto.randomUUID()
-                })
-            });
-            return response.json();
-        },
-        ErrClass: Error
-    });
-    
-    return createUserResult.map(newUser => ({
-        success: true,
-        user: newUser,
-        message: 'User created successfully'
-    }));
+const validateAndCreateUser = async (userData: { email: string; username: string; password: string }) => {
+  // Step 1: Validate email uniqueness
+  const emailCheckResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch(`/api/users/check-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userData.email }),
+      });
+      const data = await response.json();
+      if (data.exists) {
+        throw new Error("Email already exists");
+      }
+      return data;
+    },
+    ErrClass: Error,
+  });
+
+  if (emailCheckResult.isError()) {
+    return Either.Error(`Email validation failed: ${emailCheckResult.getError().message}`);
+  }
+
+  // Step 2: Validate username uniqueness
+  const usernameCheckResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch(`/api/users/check-username`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: userData.username }),
+      });
+      const data = await response.json();
+      if (data.exists) {
+        throw new Error("Username already exists");
+      }
+      return data;
+    },
+    ErrClass: Error,
+  });
+
+  if (usernameCheckResult.isError()) {
+    return Either.Error(`Username validation failed: ${usernameCheckResult.getError().message}`);
+  }
+
+  // Step 3: Create user
+  const createUserResult = await safeAsync({
+    fn: async () => {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...userData,
+          createdAt: new Date().toISOString(),
+          id: crypto.randomUUID(),
+        }),
+      });
+      return response.json();
+    },
+    ErrClass: Error,
+  });
+
+  return createUserResult.map((newUser) => ({
+    success: true,
+    user: newUser,
+    message: "User created successfully",
+  }));
 };
 
 // Async file processing with Either
 const processUploadedFiles = async (files: File[]) => {
-    const processFile = async (file: File) => {
-        return safeAsync({
-            fn: async () => {
-                // Validate file
-                if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                    throw new Error(`File ${file.name} is too large`);
-                }
-                
-                if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-                    throw new Error(`File ${file.name} has invalid type`);
-                }
-                
-                // Upload file
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Upload failed for ${file.name}`);
-                }
-                
-                return response.json();
-            },
-            ErrClass: Error
-        });
-    };
-    
-    // Process all files in parallel
-    const results = await Promise.all(files.map(processFile));
-    
-    // Separate successful and failed uploads
-    const [successfulUploads, failedUploads] = partition(results);
-    
-    return {
-        successful: successfulUploads,
-        failed: failedUploads.map(error => error.message),
-        summary: {
-            total: files.length,
-            successful: successfulUploads.length,
-            failed: failedUploads.length
+  const processFile = async (file: File) => {
+    return safeAsync({
+      fn: async () => {
+        // Validate file
+        if (file.size > 5 * 1024 * 1024) {
+          // 5MB limit
+          throw new Error(`File ${file.name} is too large`);
         }
-    };
+
+        if (!["image/jpeg", "image/png", "image/gif"].includes(file.type)) {
+          throw new Error(`File ${file.name} has invalid type`);
+        }
+
+        // Upload file
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed for ${file.name}`);
+        }
+
+        return response.json();
+      },
+      ErrClass: Error,
+    });
+  };
+
+  // Process all files in parallel
+  const results = await Promise.all(files.map(processFile));
+
+  // Separate successful and failed uploads
+  const [successfulUploads, failedUploads] = partition(results);
+
+  return {
+    successful: successfulUploads,
+    failed: failedUploads.map((error) => error.message),
+    summary: {
+      total: files.length,
+      successful: successfulUploads.length,
+      failed: failedUploads.length,
+    },
+  };
 };
 ```
 
@@ -1002,161 +1052,158 @@ const processUploadedFiles = async (files: File[]) => {
 ### Database Operations with Error Handling
 
 ```typescript
-import { Either, safeAsync } from '@redeban/either-monad';
+import { Either, safeAsync } from "@byzobss/either-monad";
 
 interface DatabaseConfig {
-    host: string;
-    port: number;
-    database: string;
+  host: string;
+  port: number;
+  database: string;
 }
 
 class DatabaseError extends Error {
-    constructor(message: string, public code: string) {
-        super(message);
-        this.name = 'DatabaseError';
-    }
+  constructor(message: string, public code: string) {
+    super(message);
+    this.name = "DatabaseError";
+  }
 }
 
 const connectToDatabase = async (config: DatabaseConfig) => {
-    return safeAsync({
-        fn: async () => {
-            // Simulated database connection
-            if (!config.host) throw new Error('DB_HOST_MISSING');
-            if (config.port < 1 || config.port > 65535) throw new Error('DB_INVALID_PORT');
-            
-            // Simulate connection logic
-            return { connected: true, connectionId: Math.random().toString(36) };
-        },
-        ErrClass: DatabaseError
-    });
+  return safeAsync({
+    fn: async () => {
+      // Simulated database connection
+      if (!config.host) throw new Error("DB_HOST_MISSING");
+      if (config.port < 1 || config.port > 65535) throw new Error("DB_INVALID_PORT");
+
+      // Simulate connection logic
+      return { connected: true, connectionId: Math.random().toString(36) };
+    },
+    ErrClass: DatabaseError,
+  });
 };
 
 const executeQuery = async (connection: any, query: string) => {
-    return safeAsync({
-        fn: async () => {
-            if (!query.trim()) throw new Error('EMPTY_QUERY');
-            if (query.toLowerCase().includes('drop')) throw new Error('DANGEROUS_QUERY');
-            
-            // Simulate query execution
-            return { rows: [{ id: 1, name: 'Sample Data' }], rowCount: 1 };
-        },
-        ErrClass: DatabaseError
-    });
+  return safeAsync({
+    fn: async () => {
+      if (!query.trim()) throw new Error("EMPTY_QUERY");
+      if (query.toLowerCase().includes("drop")) throw new Error("DANGEROUS_QUERY");
+
+      // Simulate query execution
+      return { rows: [{ id: 1, name: "Sample Data" }], rowCount: 1 };
+    },
+    ErrClass: DatabaseError,
+  });
 };
 
 const databaseOperation = async (config: DatabaseConfig, query: string) => {
-    const connection = await connectToDatabase(config);
-    
-    return connection
-        .flatMap(async conn => await executeQuery(conn, query))
-        .then(result => result
-            .map(queryResult => ({
-                success: true,
-                data: queryResult.rows,
-                count: queryResult.rowCount
-            }))
-            .recover(error => ({
-                success: false,
-                error: error.message,
-                data: [],
-                count: 0
-            }))
-        );
+  const connection = await connectToDatabase(config);
+
+  return connection
+    .flatMap(async (conn) => await executeQuery(conn, query))
+    .then((result) =>
+      result
+        .map((queryResult) => ({
+          success: true,
+          data: queryResult.rows,
+          count: queryResult.rowCount,
+        }))
+        .recover((error) => ({
+          success: false,
+          error: error.message,
+          data: [],
+          count: 0,
+        }))
+    );
 };
 ```
 
 ### Form Validation Pipeline
 
 ```typescript
-import { Either, fromPredicate, traverse } from '@redeban/either-monad';
+import { Either, fromPredicate, traverse } from "@byzobss/either-monad";
 
 interface FormData {
-    username: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    age: number;
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  age: number;
 }
 
 interface ValidationRule<T> {
-    field: keyof FormData;
-    validator: (value: T) => boolean;
-    message: string;
+  field: keyof FormData;
+  validator: (value: T) => boolean;
+  message: string;
 }
 
 const validationRules: ValidationRule<any>[] = [
-    {
-        field: 'username',
-        validator: (username: string) => username.length >= 3 && username.length <= 20,
-        message: 'Username must be between 3 and 20 characters'
-    },
-    {
-        field: 'email',
-        validator: (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-        message: 'Please enter a valid email address'
-    },
-    {
-        field: 'password',
-        validator: (password: string) => password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password),
-        message: 'Password must be at least 8 characters with uppercase, lowercase, and number'
-    },
-    {
-        field: 'age',
-        validator: (age: number) => age >= 13 && age <= 120,
-        message: 'Age must be between 13 and 120'
-    }
+  {
+    field: "username",
+    validator: (username: string) => username.length >= 3 && username.length <= 20,
+    message: "Username must be between 3 and 20 characters",
+  },
+  {
+    field: "email",
+    validator: (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    message: "Please enter a valid email address",
+  },
+  {
+    field: "password",
+    validator: (password: string) => password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password),
+    message: "Password must be at least 8 characters with uppercase, lowercase, and number",
+  },
+  {
+    field: "age",
+    validator: (age: number) => age >= 13 && age <= 120,
+    message: "Age must be between 13 and 120",
+  },
 ];
 
 const validateForm = (formData: FormData) => {
-    // Validate individual fields
-    const fieldValidations = validationRules.map(rule => 
-        fromPredicate(
-            formData[rule.field],
-            rule.validator,
-            new Error(`${rule.field}: ${rule.message}`)
-        )
-    );
-    
-    // Check password confirmation
-    const passwordConfirmation = fromPredicate(
-        formData.confirmPassword,
-        (confirm) => confirm === formData.password,
-        new Error('confirmPassword: Passwords do not match')
-    );
-    
-    // Combine all validations
-    const allValidations = [...fieldValidations, passwordConfirmation];
-    
-    return sequence(allValidations)
-        .map(() => ({
-            isValid: true,
-            data: {
-                username: formData.username.toLowerCase(),
-                email: formData.email.toLowerCase(),
-                hashedPassword: `<hashed-password>`, // In real app, use proper hashing
-                age: formData.age,
-                createdAt: new Date().toISOString()
-            },
-            errors: []
-        }))
-        .recover(firstError => {
-            // Get all validation errors
-            const [, errors] = partition(allValidations);
-            return {
-                isValid: false,
-                data: null,
-                errors: errors.map(err => err.message)
-            };
-        });
+  // Validate individual fields
+  const fieldValidations = validationRules.map((rule) =>
+    fromPredicate(formData[rule.field], rule.validator, new Error(`${rule.field}: ${rule.message}`))
+  );
+
+  // Check password confirmation
+  const passwordConfirmation = fromPredicate(
+    formData.confirmPassword,
+    (confirm) => confirm === formData.password,
+    new Error("confirmPassword: Passwords do not match")
+  );
+
+  // Combine all validations
+  const allValidations = [...fieldValidations, passwordConfirmation];
+
+  return sequence(allValidations)
+    .map(() => ({
+      isValid: true,
+      data: {
+        username: formData.username.toLowerCase(),
+        email: formData.email.toLowerCase(),
+        hashedPassword: `<hashed-password>`, // In real app, use proper hashing
+        age: formData.age,
+        createdAt: new Date().toISOString(),
+      },
+      errors: [],
+    }))
+    .recover((firstError) => {
+      // Get all validation errors
+      const [, errors] = partition(allValidations);
+      return {
+        isValid: false,
+        data: null,
+        errors: errors.map((err) => err.message),
+      };
+    });
 };
 
 // Usage example
 const formSubmission = validateForm({
-    username: 'johndoe',
-    email: 'john@example.com',
-    password: '<your-secure-password>',
-    confirmPassword: '<your-secure-password>',
-    age: 25
+  username: "johndoe",
+  email: "john@example.com",
+  password: "<your-secure-password>",
+  confirmPassword: "<your-secure-password>",
+  age: 25,
 });
 
 console.log(formSubmission.getValue());
@@ -1167,7 +1214,7 @@ console.log(formSubmission.getValue());
 ### Project Structure
 
 ```
-@redeban/either-monad/
+@byzobss/either-monad/
 ├── src/
 │   ├── either.ts              # Core Either class with all methods
 │   ├── either-types.ts        # Utility functions and type definitions
@@ -1215,30 +1262,143 @@ The project uses strict TypeScript settings for maximum type safety:
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
     "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
+```
+
+### Build Configuration
+
+**Jest Configuration:**
+
+```javascript
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  roots: ["<rootDir>/tests"],
+  testMatch: ["**/*.test.ts"],
+  collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
+};
+```
+
+**ESLint Configuration:**
+
+```javascript
+module.exports = {
+  parser: "@typescript-eslint/parser",
+  plugins: ["@typescript-eslint"],
+  extends: ["eslint:recommended", "@typescript-eslint/recommended"],
+  rules: {
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "error",
+  },
+};
 ```
 
 ### Testing Strategy
 
-Tests cover all functionality with focus on:
+Comprehensive test suite with 500+ test cases covering:
+
 - **Type safety validation** - Ensuring TypeScript types work correctly
 - **Method behavior** - Testing all Either methods and utility functions
 - **Error scenarios** - Validating error handling and edge cases
 - **Integration patterns** - Testing real-world usage patterns
+- **Performance tests** - Large array processing and deeply nested operations
+- **Edge cases** - Circular references, null/undefined handling, complex type transformations
+- **Cross-platform compatibility** - Node.js and browser environment testing
 
 ### Code Quality Standards
 
 - **ESLint** with TypeScript rules for consistent code style
-- **Strict TypeScript** compilation with no implicit any
-- **100% test coverage** target for all public APIs
+- **Strict TypeScript** compilation with all strict flags enabled:
+  - `strict: true`
+  - `forceConsistentCasingInFileNames: true`
+  - `skipLibCheck: true`
+- **100% test coverage** achieved for all public APIs
 - **Functional programming** patterns throughout
 - **Immutable operations** - all methods return new instances
-- **Pure functions** - no side effects in core logic
+- **Pure functions** - no side effects in core logic (except `tap` methods)
+- **Type-safe error constructors** - Generic constraints for Error types
+- **Comprehensive JSDoc** - Full documentation for all public methods
+
+## Security and Best Practices
+
+### Security Features
+
+- **Safe Error Serialization**: Uses `safe-json-stringify` to prevent issues with circular references
+- **No Path Traversal**: Safe require() usage without path traversal vulnerabilities
+- **Input Validation**: All public methods validate inputs and handle edge cases
+- **Memory Safety**: Immutable operations prevent accidental state mutations
+- **Type Safety**: Strict TypeScript prevents runtime type errors
+
+### Error Handling Best Practices
+
+```typescript
+// Safe error message extraction handles all types
+function extractErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : typeof error === "string"
+    ? error
+    : typeof error === "object" && error !== null
+    ? inspectObject(error)
+    : String(error);
+}
+
+// Cross-platform object inspection
+function inspectObject(data: object): string {
+  const isNodeJS = typeof process !== "undefined" && process.versions?.node;
+  if (isNodeJS) {
+    try {
+      const nodeUtil = (globalThis as any).require?.("util");
+      if (nodeUtil?.inspect) {
+        return nodeUtil.inspect(data, { depth: 2, colors: false });
+      }
+    } catch (error) {
+      // Graceful fallback
+    }
+  }
+
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    return "[Object: unable to stringify]";
+  }
+}
+```
+
+### Performance Considerations
+
+- **Lazy Evaluation**: Operations are only executed when needed
+- **Memory Efficient**: No unnecessary object creation in error paths
+- **Optimized Array Operations**: Efficient implementations of `sequence`, `traverse`, and `partition`
+- **Early Return**: Short-circuit evaluation in error cases
+
+### Type Safety Guarantees
+
+```typescript
+// Strict type guards ensure runtime safety
+public isOk(): this is OK<T> {
+    return this._isOk;
+}
+
+public isError(): this is ErrorType<E> {
+    return !this._isOk;
+}
+
+// Generic constraints ensure proper error types
+export type Constructor<T extends Error> = new (message?: string) => T;
+```
 
 ## Contributing
 
@@ -1283,9 +1443,19 @@ MIT License - see LICENSE file for details.
 ## Changelog
 
 ### v1.0.0
+
 - Initial release with complete Either monad implementation
-- Full Result pattern support with 20+ methods
-- Comprehensive utility functions (`safeSync`, `safeAsync`, `sequence`, etc.)
-- Complete TypeScript declarations with LSP support
-- Extensive test suite with 100% coverage
+- Full Result pattern support with 20+ methods including:
+  - Core operations: `map`, `flatMap`, `fold`, `filter`
+  - Error handling: `recover`, `recoverWith`, `mapError`
+  - Combination: `zip`, `zipWith`
+  - Side effects: `tap`, `tapError`
+  - Conversion: `toPromise`, `toOptional`, `swap`
+- Comprehensive utility functions:
+  - Safe wrappers: `safeSync`, `safeAsync`
+  - Value conversion: `fromNullable`, `fromPredicate`
+  - Array processing: `sequence`, `partition`, `traverse`, `collectAllErrors`
+- Complete TypeScript declarations with strict type safety
+- Extensive test suite with 100% coverage (500+ test cases)
+- Cross-platform error inspection with Node.js and browser support
 - Detailed documentation with real-world examples

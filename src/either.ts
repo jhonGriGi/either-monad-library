@@ -144,8 +144,8 @@ export class Either<T, E> {
      */
     public fold<R>(expressions: FoldExpression<R, E, T>): R {
         return this.isError()
-            ? expressions.fnError(this.error as E)
-            : expressions.fnOk(this.value as T);
+            ? expressions.fnError(this.error!)
+            : expressions.fnOk(this.value!);
     }
 
     /**
@@ -161,8 +161,8 @@ export class Either<T, E> {
      */
     public map<U>(fn: (value: T) => U): Either<U, E> {
         return this.isOk() 
-            ? Either.Ok(fn(this.value as T)) 
-            : Either.Error(this.error as E);
+            ? Either.Ok(fn(this.value!)) 
+            : Either.Error(this.error!);
     }
 
     /**
@@ -179,8 +179,8 @@ export class Either<T, E> {
      */
     public flatMap<U>(fn: (value: T) => Either<U, E>): Either<U, E> {
         return this.isOk() 
-            ? fn(this.value as T) 
-            : Either.Error(this.error as E);
+            ? fn(this.value!) 
+            : Either.Error(this.error!);
     }
 
     /**
@@ -197,8 +197,8 @@ export class Either<T, E> {
      */
     public mapError<F>(fn: (error: E) => F): Either<T, F> {
         return this.isError() 
-            ? Either.Error(fn(this.error as E)) 
-            : Either.Ok(this.value as T);
+            ? Either.Error(fn(this.error!)) 
+            : Either.Ok(this.value!);
     }
 
     /**
@@ -212,7 +212,7 @@ export class Either<T, E> {
      * ```
      */
     public getOrElse(defaultValue: T): T {
-        return this.isOk() ? this.value as T : defaultValue;
+        return this.isOk() ? this.value! : defaultValue;
     }
 
     /**
@@ -228,10 +228,10 @@ export class Either<T, E> {
      */
     public zip<U>(other: Either<U, E>): Either<[T, U], E> {
         return this.isError() 
-            ? Either.Error(this.error as E)
+            ? Either.Error(this.getError())
             : other.isError() 
                 ? Either.Error(other.getError())
-                : Either.Ok([this.value as T, other.getValue()]);
+                : Either.Ok([this.getValue(), other.getValue()]);
     }
 
     /**
@@ -263,23 +263,23 @@ export class Either<T, E> {
      * ```
      */
     public filter(predicate: (value: T) => boolean, error: E): Either<T, E> {
-        return this.isOk() && predicate(this.value as T) 
+        return this.isOk() && predicate(this.value!) 
             ? this 
             : Either.Error(error);
     }
 
     /**
-     * Alias for flatMap (functional programming convention)
+     * Chains Either-returning operations (alias for flatMap)
      * @template U - Type of the new success value
      * @param fn - Function that returns an Either
-     * @returns Either<U, E> - Result of the function
+     * @returns Either<U, E> - Result of the chained operation
      * @example
      * ```typescript
-     * const result = Either.Ok(5).find(x => Either.Ok(x * 2));
+     * const result = Either.Ok(5).chain(x => Either.Ok(x * 2));
      * console.log(result.getValue()); // 10
      * ```
      */
-    public find<U>(fn: (value: T) => Either<U, E>): Either<U, E> {
+    public chain<U>(fn: (value: T) => Either<U, E>): Either<U, E> {
         return this.flatMap(fn);
     }
 
@@ -294,7 +294,7 @@ export class Either<T, E> {
      */
     public toPromise(): Promise<T> {
         return this.isOk() 
-            ? Promise.resolve(this.value as T)
+            ? Promise.resolve(this.value!)
             : Promise.reject(this.error);
     }
 
@@ -308,7 +308,7 @@ export class Either<T, E> {
      * ```
      */
     public toOptional(): T | undefined {
-        return this.isOk() ? this.value as T : undefined;
+        return this.isOk() ? this.value! : undefined;
     }
 
     /**
@@ -321,9 +321,10 @@ export class Either<T, E> {
      * ```
      */
     public swap(): Either<E, T> {
-        return this.isOk() 
-            ? (Either.Error(this.value as unknown as E) as unknown as Either<E, T>)
-            : (Either.Ok(this.error as unknown as T) as unknown as Either<E, T>);
+        if (this.isOk()) {
+            return Either.Error(this.value!) as Either<E, T>;
+        }
+        return Either.Ok(this.error!) as Either<E, T>;
     }
 
     /**
@@ -338,8 +339,8 @@ export class Either<T, E> {
      */
     public recover(fn: (error: E) => T): Either<T, never> {
         return this.isError() 
-            ? Either.Ok(fn(this.error as E))
-            : Either.Ok(this.value as T);
+            ? Either.Ok(fn(this.error!))
+            : Either.Ok(this.value!);
     }
 
     /**
@@ -354,7 +355,7 @@ export class Either<T, E> {
      * ```
      */
     public recoverWith(fn: (error: E) => Either<T, E>): Either<T, E> {
-        return this.isError() ? fn(this.error as E) : this;
+        return this.isError() ? fn(this.error!) : this;
     }
 
     /**
@@ -369,7 +370,7 @@ export class Either<T, E> {
      * ```
      */
     public tap(fn: (value: T) => void): Either<T, E> {
-        if (this.isOk()) fn(this.value as T);
+        if (this.isOk()) fn(this.value!);
         return this;
     }
 
@@ -385,7 +386,7 @@ export class Either<T, E> {
      * ```
      */
     public tapError(fn: (error: E) => void): Either<T, E> {
-        if (this.isError()) fn(this.error as E);
+        if (this.isError()) fn(this.error!);
         return this;
     }
 }

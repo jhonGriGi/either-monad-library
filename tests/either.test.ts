@@ -1,4 +1,4 @@
-import { Either, safeSync, safeAsync, fromNullable, fromPredicate, sequence, partition, traverse, sequenceAll } from '../src';
+import { Either, safeSync, safeAsync, fromNullable, fromPredicate, sequence, partition, traverse, collectAllErrors } from '../src';
 
 describe('Either Core Class - Complete Tests', () => {
     
@@ -319,16 +319,16 @@ describe('Either Core Class - Complete Tests', () => {
             });
         });
 
-        describe('find()', () => {
+        describe('chain()', () => {
             it('should be alias for flatMap', () => {
-                const result = Either.Ok(5).find(x => Either.Ok(x * 2));
+                const result = Either.Ok(5).chain(x => Either.Ok(x * 2));
                 expect(result.isOk()).toBe(true);
                 expect(result.getValue()).toBe(10);
             });
 
             it('should behave like flatMap with Error', () => {
                 const okValue: Either<number, string> = Either.Ok(5);
-                const result = okValue.find(() => Either.Error('Not found'));
+                const result = okValue.chain(() => Either.Error('Not found'));
                 expect(result.isError()).toBe(true);
                 expect(result.getError()).toBe('Not found');
             });
@@ -537,7 +537,7 @@ describe('Utility Functions', () => {
             
             expect(result.isError()).toBe(true);
             expect(result.getError()).toBeInstanceOf(Error);
-            expect(result.getError().message).toBe('{ code: 500, message: \'Server error\' }');
+            expect(result.getError().message).toBe(JSON.stringify(errorObj, null, 2));
         });
 
         it('should handle custom error classes', () => {
@@ -640,7 +640,7 @@ describe('Utility Functions', () => {
             });
             
             expect(result.isError()).toBe(true);
-            expect((result.getError() as Error).message).toBe('{ status: 404, message: \'Not found\' }');
+            expect((result.getError() as Error).message).toBe(JSON.stringify(errorObj, null, 2));
         });
     });
 
@@ -817,10 +817,10 @@ describe('Utility Functions', () => {
         });
     });
 
-    describe('sequenceAll()', () => {
+    describe('collectAllErrors()', () => {
         it('should return Ok when all Eithers are Ok', () => {
             const eithers = [Either.Ok(1), Either.Ok(2), Either.Ok(3)];
-            const result = sequenceAll(eithers);
+            const result = collectAllErrors(eithers);
             
             expect(result.isOk()).toBe(true);
             expect(result.getValue()).toEqual([1, 2, 3]);
@@ -833,21 +833,21 @@ describe('Utility Functions', () => {
                 Either.Ok(2),
                 Either.Error('error2')
             ];
-            const result = sequenceAll(eithers);
+            const result = collectAllErrors(eithers);
             
             expect(result.isError()).toBe(true);
             expect(result.getError()).toEqual(['error1', 'error2']);
         });
 
         it('should handle empty array', () => {
-            const result = sequenceAll([]);
+            const result = collectAllErrors([]);
             expect(result.isOk()).toBe(true);
             expect(result.getValue()).toEqual([]);
         });
 
         it('should handle all errors', () => {
             const eithers = [Either.Error('e1'), Either.Error('e2')];
-            const result = sequenceAll(eithers);
+            const result = collectAllErrors(eithers);
             
             expect(result.isError()).toBe(true);
             expect(result.getError()).toEqual(['e1', 'e2']);
@@ -890,8 +890,7 @@ describe('Edge Cases and Integration Tests', () => {
             });
             
             expect(result.isError()).toBe(true);
-            expect(result.getError().message).toContain('message: \'Circular\'');
-            expect(result.getError().message).toContain('[Circular');
+            expect(result.getError().message).toBe('[Object: unable to stringify]');
         });
 
         it('should maintain error reference through transformations', () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@redeban/either-monad",
+  "name": "@byzobss/either-monad",
   "version": "1.0.0",
   "description": "Functional error handling with Either monad for TypeScript",
   "main": "dist/index.js",
