@@ -21,12 +21,14 @@ interface FoldExpression<R, E, T> {
 export class Either<T, E> {
     /**
      * Private constructor to ensure Either instances are created through static methods
-     * @param value - Optional success value
-     * @param error - Optional error value
+     * @param value - Success value (only for Ok instances)
+     * @param error - Error value (only for Error instances)
+     * @param isOk - Internal flag to distinguish between Ok and Error states
      */
     private constructor(
-        private readonly value?: T,
-        private readonly error?: E,
+        private readonly value: T | undefined,
+        private readonly error: E | undefined,
+        private readonly _isOk: boolean
     ) { }
 
     /**
@@ -41,7 +43,7 @@ export class Either<T, E> {
      * ```
      */
     static Ok<T>(value: T): OK<T> {
-        return new Either(value);
+        return new Either(value, undefined, true) as OK<T>;
     }
 
     /**
@@ -56,7 +58,7 @@ export class Either<T, E> {
      * ```
      */
     static Error<E>(error: E): ErrorType<E> {
-        return new Either(undefined as never, error);
+        return new Either(undefined, error, false) as ErrorType<E>;
     }
 
     /**
@@ -71,7 +73,7 @@ export class Either<T, E> {
      * ```
      */
     public isOk(): this is OK<T> {
-        return this.value !== undefined && this.error === undefined;
+        return this._isOk;
     }
 
     /**
@@ -86,7 +88,7 @@ export class Either<T, E> {
      * ```
      */
     public isError(): this is ErrorType<E> {
-        return this.error !== undefined;
+        return !this._isOk;
     }
 
     /**
@@ -104,7 +106,7 @@ export class Either<T, E> {
             throw new Error('Cannot access value in a non-Ok instance');
         }
 
-        return this.value!;
+        return this.value as T;
     }
 
     /**
@@ -122,7 +124,7 @@ export class Either<T, E> {
             throw new Error('Cannot access error in a non-Error instance');
         }
 
-        return this.error!;
+        return this.error as E;
     }
 
     /**
@@ -219,9 +221,9 @@ export class Either<T, E> {
      * ```
      */
     public zip<U>(other: Either<U, E>): Either<[T, U], E> {
-        return this.isOk() && other.isOk() 
-            ? Either.Ok([this.value!, other.getValue()])
-            : this.isError() ? Either.Error(this.error!) : Either.Error(other.getError());
+        if (this.isError()) return Either.Error(this.error!);
+        if (other.isError()) return Either.Error(other.error!);
+        return Either.Ok([this.value!, other.value!]);
     }
 
     /**
@@ -312,8 +314,8 @@ export class Either<T, E> {
      */
     public swap(): Either<E, T> {
         return this.isOk() 
-            ? Either.Error(this.value!)
-            : Either.Ok(this.error!);
+            ? (Either.Error(this.value as unknown as E) as unknown as Either<E, T>)
+            : (Either.Ok(this.error as unknown as T) as unknown as Either<E, T>);
     }
 
     /**

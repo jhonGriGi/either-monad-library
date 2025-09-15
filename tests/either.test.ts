@@ -19,11 +19,10 @@ describe('Either Core Class - Complete Tests', () => {
 
             it('should create Ok instance with undefined value', () => {
                 const result = Either.Ok(undefined);
-                // Note: The current implementation has a design issue with undefined values
-                // where Either.Ok(undefined) creates an invalid state (neither Ok nor Error)
-                expect(result.isOk()).toBe(false);
+                // After refactoring, Either.Ok(undefined) now works correctly
+                expect(result.isOk()).toBe(true);
                 expect(result.isError()).toBe(false);
-                // This is a known limitation of the current implementation
+                expect(result.getValue()).toBe(undefined);
             });
 
             it('should create Ok instance with object value', () => {
@@ -543,7 +542,7 @@ describe('Utility Functions', () => {
 
         it('should handle custom error classes', () => {
             class CustomError extends Error {
-                constructor(message: string) {
+                constructor(message?: string) {
                     super(message);
                     this.name = 'CustomError';
                 }

@@ -7,7 +7,7 @@ export type OK<T> = Either<T, never>;
 export type ErrorType<E> = Either<never, E>;
 
 /** Constructor type for creating error instances */
-type Constructor<T> = new (...args: any[]) => T;
+type Constructor<T extends Error> = new (message?: string) => T;
 
 /**
  * Arguments interface for safeAsync function
@@ -28,6 +28,21 @@ interface SafeAsyncArgs<T, E extends Error> {
  */
 function safeStringify(data: object): string {
     return JSON.stringify(data, null, 2);
+}
+
+/**
+ * Extracts error message from unknown error value
+ * @param error - Unknown error value
+ * @returns String representation of the error
+ */
+function extractErrorMessage(error: unknown): string {
+    return error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+            ? error
+            : typeof error === 'object' && error !== null
+                ? safeStringify(error)
+                : String(error);
 }
 
 /**
@@ -86,23 +101,18 @@ export async function safeAsync<T, E extends Error>({
 export async function safeAsync<T, E extends Error>({
     fn,
     ErrClass,
-}: SafeAsyncArgs<T, E>): Promise<Either<any, any>> {
+}: SafeAsyncArgs<T, E>): Promise<Either<T, E>> {
     try {
         const value = await fn();
 
         if (value instanceof Either) {
-            return value;
+            // Handle the overload case where fn returns Either<U, V>
+            return value as Either<T, E>;
         }
         return Either.Ok(value);
     }
     catch (error) {
-        const msg
-            = error instanceof Error
-                ? error.message
-                : typeof error === 'string'
-                    ? error
-                    : safeStringify(error as object);
-
+        const msg = extractErrorMessage(error);
         return Either.Error(new ErrClass(msg));
     }
 }
@@ -143,13 +153,7 @@ export function safeSync<T, E extends Error>({
         return Either.Ok(fn());
     }
     catch (error) {
-        const msg
-            = error instanceof Error
-                ? error.message
-                : typeof error === 'string'
-                    ? error
-                    : safeStringify(error as object);
-
+        const msg = extractErrorMessage(error);
         return Either.Error(new ErrClass(msg));
     }
 }
@@ -169,7 +173,7 @@ export function safeSync<T, E extends Error>({
  * ```
  */
 export function fromNullable<T>(value: T | null | undefined): Either<T, Error> {
-    return value != null ? Either.Ok(value) : Either.Error(new Error('Value is null or undefined'));
+    return value !== null && value !== undefined ? Either.Ok(value) : Either.Error(new Error('Value is null or undefined'));
 }
 
 /**
@@ -277,11 +281,11 @@ export function traverse<T, U, E>(values: T[], fn: (value: T) => Either<U, E>): 
     const results: U[] = [];
     
     for (const value of values) {
-        const result = fn(value);
-        if (result.isError()) {
-            return Either.Error(result.getError());
+        const either = fn(value);
+        if (either.isError()) {
+            return Either.Error(either.getError());
         }
-        results.push(result.getValue());
+        results.push(either.getValue());
     }
     
     return Either.Ok(results);
