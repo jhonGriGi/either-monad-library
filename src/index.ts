@@ -12,6 +12,3 @@ export {
     traverse,
     collectAllErrors
 } from './either-types';
-
-// Legacy export for backward compatibility
-export { collectAllErrors as sequenceAll } from './either-types';
