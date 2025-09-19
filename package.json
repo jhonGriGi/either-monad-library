@@ -5,8 +5,18 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhonGriGi/either-monad-library.git"
+  },
+  "homepage": "https://github.com/jhonGriGi/either-monad-library#readme",
+  "bugs": {
+    "url": "https://github.com/jhonGriGi/either-monad-library/issues"
+  },
   "scripts": {
     "build": "tsc",
     "test": "jest",
