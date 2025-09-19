@@ -1,5 +1,5 @@
 {
-  "name": "@byzobss/either-monad",
+  "name": "either-monad-library",
   "version": "1.0.0",
   "description": "Functional error handling with Either monad for TypeScript",
   "main": "dist/index.js",

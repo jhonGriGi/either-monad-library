@@ -152,7 +152,7 @@ graph TD
 ## Installation
 
 ```bash
-npm install @byzobss/either-monad
+npm i either-monad-library
 ```
 
 ### Requirements
@@ -231,7 +231,9 @@ safeAsync<T, E>({ fn: () => Promise<T>, ErrClass }): Promise<Either<T, E>>
 import { Either } from "@byzobss/either-monad";
 
 const userAge: Either<number, Error> = Either.Ok(25);
-const invalidAge: Either<number, Error> = Either.Error(new Error("Invalid age"));
+const invalidAge: Either<number, Error> = Either.Error(
+  new Error("Invalid age"),
+);
 
 // Type-safe access with type guards
 if (userAge.isOk()) {
@@ -598,7 +600,9 @@ const fetchUserProfile = async (userId: string) => {
       displayName: `${profile.firstName} ${profile.lastName}`,
       isActive: profile.lastLoginDate > Date.now() - 30 * 24 * 60 * 60 * 1000,
     }))
-    .mapError((error) => new Error(`Failed to fetch user profile: ${error.message}`));
+    .mapError(
+      (error) => new Error(`Failed to fetch user profile: ${error.message}`),
+    );
 };
 ```
 
@@ -616,14 +620,20 @@ interface UserInput {
 const validateAndProcessUser = (userInput: UserInput) => {
   return fromNullable(userInput.email)
     .flatMap((email) =>
-      fromPredicate(email, (email) => email.includes("@") && email.includes("."), new Error("Invalid email format"))
+      fromPredicate(
+        email,
+        (email) => email.includes("@") && email.includes("."),
+        new Error("Invalid email format"),
+      ),
     )
     .map((email) => email.toLowerCase().trim())
     .zip(fromNullable(userInput.age))
     .flatMap(([email, age]) =>
-      fromPredicate(age, (age) => age >= 18 && age <= 120, new Error("Age must be between 18 and 120")).map(
-        (validAge) => ({ email, age: validAge })
-      )
+      fromPredicate(
+        age,
+        (age) => age >= 18 && age <= 120,
+        new Error("Age must be between 18 and 120"),
+      ).map((validAge) => ({ email, age: validAge })),
     )
     .zip(fromNullable(userInput.name))
     .map(([userData, name]) => ({
@@ -658,7 +668,12 @@ console.log(userResult.getValue());
 ### Working with Arrays and Collections
 
 ```typescript
-import { sequence, traverse, partition, collectAllErrors } from "@byzobss/either-monad";
+import {
+  sequence,
+  traverse,
+  partition,
+  collectAllErrors,
+} from "@byzobss/either-monad";
 
 // Processing multiple user IDs
 const userIds = ["user1", "user2", "user3", "invalid-user"];
@@ -682,7 +697,11 @@ const fetchMultipleUsers = async (ids: string[]) => {
 // Combining validation results
 const validateUserEmails = (emails: string[]) => {
   const validationResults = emails.map((email) =>
-    fromPredicate(email, (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), new Error(`Invalid email: ${email}`))
+    fromPredicate(
+      email,
+      (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+      new Error(`Invalid email: ${email}`),
+    ),
   );
 
   // Get all valid emails or first error
@@ -716,38 +735,53 @@ console.log("Invalid emails:", emailValidation.invalidEmails);
 import { Either, safeAsync } from "@byzobss/either-monad";
 
 class NetworkError extends Error {
-  constructor(message: string, public statusCode: number) {
+  constructor(
+    message: string,
+    public statusCode: number,
+  ) {
     super(message);
     this.name = "NetworkError";
   }
 }
 
 class ValidationError extends Error {
-  constructor(message: string, public field: string) {
+  constructor(
+    message: string,
+    public field: string,
+  ) {
     super(message);
     this.name = "ValidationError";
   }
 }
 
 const robustApiCall = async (endpoint: string, retries: number = 3) => {
-  const attemptRequest = async (attempt: number): Promise<Either<any, Error>> => {
+  const attemptRequest = async (
+    attempt: number,
+  ): Promise<Either<any, Error>> => {
     return safeAsync({
       fn: () =>
         fetch(endpoint).then((res) => {
           if (!res.ok) {
-            throw new NetworkError(`Request failed: ${res.statusText}`, res.status);
+            throw new NetworkError(
+              `Request failed: ${res.statusText}`,
+              res.status,
+            );
           }
           return res.json();
         }),
       ErrClass: NetworkError,
     }).then((result) =>
       result.recoverWith((error) => {
-        if (error instanceof NetworkError && error.statusCode >= 500 && attempt < retries) {
+        if (
+          error instanceof NetworkError &&
+          error.statusCode >= 500 &&
+          attempt < retries
+        ) {
           console.log(`Attempt ${attempt} failed, retrying...`);
           return attemptRequest(attempt + 1);
         }
         return Either.Error(error);
-      })
+      }),
     );
   };
 
@@ -755,7 +789,7 @@ const robustApiCall = async (endpoint: string, retries: number = 3) => {
     result.recover((error) => {
       console.error(`All attempts failed: ${error.message}`);
       return { error: true, message: "Service temporarily unavailable" };
-    })
+    }),
   );
 };
 
@@ -766,10 +800,14 @@ const processUserData = async (userData: any) => {
       fromPredicate(
         data,
         (data) => data && typeof data === "object",
-        new ValidationError("Invalid data format", "root")
-      )
+        new ValidationError("Invalid data format", "root"),
+      ),
     )
-    .flatMap((data) => fromNullable(data.email).mapError(() => new ValidationError("Email is required", "email")))
+    .flatMap((data) =>
+      fromNullable(data.email).mapError(
+        () => new ValidationError("Email is required", "email"),
+      ),
+    )
     .tap((data) => console.log(`Processing user: ${data.email}`))
     .recoverWith((error) => {
       if (error instanceof ValidationError) {
@@ -778,14 +816,21 @@ const processUserData = async (userData: any) => {
       }
       return Either.Error(error);
     })
-    .tapError((error) => console.error(`Unrecoverable error: ${error.message}`));
+    .tapError((error) =>
+      console.error(`Unrecoverable error: ${error.message}`),
+    );
 };
 ```
 
 ### Modern Async/Await Patterns
 
 ```typescript
-import { Either, safeAsync, fromNullable, sequence } from "@byzobss/either-monad";
+import {
+  Either,
+  safeAsync,
+  fromNullable,
+  sequence,
+} from "@byzobss/either-monad";
 
 // Clean async/await API calls without .then/.catch
 const fetchUserData = async (userId: string): Promise<Either<User, Error>> => {
@@ -827,7 +872,9 @@ const processUserWorkflow = async (userId: string) => {
   });
 
   if (preferencesResult.isError()) {
-    return Either.Error(`Preferences fetch failed: ${preferencesResult.getError().message}`);
+    return Either.Error(
+      `Preferences fetch failed: ${preferencesResult.getError().message}`,
+    );
   }
 
   // Step 3: Update user profile
@@ -882,7 +929,11 @@ const fetchUserDashboardData = async (userId: string) => {
   ]);
 
   // Combine all results using sequence
-  const combinedResult = sequence([userResult, ordersResult, notificationsResult]);
+  const combinedResult = sequence([
+    userResult,
+    ordersResult,
+    notificationsResult,
+  ]);
 
   return combinedResult.map(([user, orders, notifications]) => ({
     user,
@@ -919,16 +970,26 @@ const robustDataFetch = async (url: string, maxRetries: number = 3) => {
     lastError = result.getError();
 
     if (attempt < maxRetries) {
-      console.log(`Attempt ${attempt} failed, retrying in ${attempt * 1000}ms...`);
+      console.log(
+        `Attempt ${attempt} failed, retrying in ${attempt * 1000}ms...`,
+      );
       await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
   }
 
-  return Either.Error(new Error(`All ${maxRetries} attempts failed. Last error: ${lastError?.message}`));
+  return Either.Error(
+    new Error(
+      `All ${maxRetries} attempts failed. Last error: ${lastError?.message}`,
+    ),
+  );
 };
 
 // Async validation pipeline
-const validateAndCreateUser = async (userData: { email: string; username: string; password: string }) => {
+const validateAndCreateUser = async (userData: {
+  email: string;
+  username: string;
+  password: string;
+}) => {
   // Step 1: Validate email uniqueness
   const emailCheckResult = await safeAsync({
     fn: async () => {
@@ -947,7 +1008,9 @@ const validateAndCreateUser = async (userData: { email: string; username: string
   });
 
   if (emailCheckResult.isError()) {
-    return Either.Error(`Email validation failed: ${emailCheckResult.getError().message}`);
+    return Either.Error(
+      `Email validation failed: ${emailCheckResult.getError().message}`,
+    );
   }
 
   // Step 2: Validate username uniqueness
@@ -968,7 +1031,9 @@ const validateAndCreateUser = async (userData: { email: string; username: string
   });
 
   if (usernameCheckResult.isError()) {
-    return Either.Error(`Username validation failed: ${usernameCheckResult.getError().message}`);
+    return Either.Error(
+      `Username validation failed: ${usernameCheckResult.getError().message}`,
+    );
   }
 
   // Step 3: Create user
@@ -1061,7 +1126,10 @@ interface DatabaseConfig {
 }
 
 class DatabaseError extends Error {
-  constructor(message: string, public code: string) {
+  constructor(
+    message: string,
+    public code: string,
+  ) {
     super(message);
     this.name = "DatabaseError";
   }
@@ -1072,7 +1140,8 @@ const connectToDatabase = async (config: DatabaseConfig) => {
     fn: async () => {
       // Simulated database connection
       if (!config.host) throw new Error("DB_HOST_MISSING");
-      if (config.port < 1 || config.port > 65535) throw new Error("DB_INVALID_PORT");
+      if (config.port < 1 || config.port > 65535)
+        throw new Error("DB_INVALID_PORT");
 
       // Simulate connection logic
       return { connected: true, connectionId: Math.random().toString(36) };
@@ -1085,7 +1154,8 @@ const executeQuery = async (connection: any, query: string) => {
   return safeAsync({
     fn: async () => {
       if (!query.trim()) throw new Error("EMPTY_QUERY");
-      if (query.toLowerCase().includes("drop")) throw new Error("DANGEROUS_QUERY");
+      if (query.toLowerCase().includes("drop"))
+        throw new Error("DANGEROUS_QUERY");
 
       // Simulate query execution
       return { rows: [{ id: 1, name: "Sample Data" }], rowCount: 1 };
@@ -1111,7 +1181,7 @@ const databaseOperation = async (config: DatabaseConfig, query: string) => {
           error: error.message,
           data: [],
           count: 0,
-        }))
+        })),
     );
 };
 ```
@@ -1138,7 +1208,8 @@ interface ValidationRule<T> {
 const validationRules: ValidationRule<any>[] = [
   {
     field: "username",
-    validator: (username: string) => username.length >= 3 && username.length <= 20,
+    validator: (username: string) =>
+      username.length >= 3 && username.length <= 20,
     message: "Username must be between 3 and 20 characters",
   },
   {
@@ -1148,8 +1219,10 @@ const validationRules: ValidationRule<any>[] = [
   },
   {
     field: "password",
-    validator: (password: string) => password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password),
-    message: "Password must be at least 8 characters with uppercase, lowercase, and number",
+    validator: (password: string) =>
+      password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password),
+    message:
+      "Password must be at least 8 characters with uppercase, lowercase, and number",
   },
   {
     field: "age",
@@ -1161,14 +1234,18 @@ const validationRules: ValidationRule<any>[] = [
 const validateForm = (formData: FormData) => {
   // Validate individual fields
   const fieldValidations = validationRules.map((rule) =>
-    fromPredicate(formData[rule.field], rule.validator, new Error(`${rule.field}: ${rule.message}`))
+    fromPredicate(
+      formData[rule.field],
+      rule.validator,
+      new Error(`${rule.field}: ${rule.message}`),
+    ),
   );
 
   // Check password confirmation
   const passwordConfirmation = fromPredicate(
     formData.confirmPassword,
     (confirm) => confirm === formData.password,
-    new Error("confirmPassword: Passwords do not match")
+    new Error("confirmPassword: Passwords do not match"),
   );
 
   // Combine all validations
@@ -1349,10 +1426,10 @@ function extractErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : typeof error === "string"
-    ? error
-    : typeof error === "object" && error !== null
-    ? inspectObject(error)
-    : String(error);
+      ? error
+      : typeof error === "object" && error !== null
+        ? inspectObject(error)
+        : String(error);
 }
 
 // Cross-platform object inspection
