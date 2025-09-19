@@ -23,7 +23,7 @@ export class Either<T, E> {
      * Private constructor to ensure Either instances are created through static methods
      * @param value - Success value (only for Ok instances)
      * @param error - Error value (only for Error instances)
-     * @param isOk - Internal flag to distinguish between Ok and Error states
+     * @param _isOk - Boolean for result state
      */
     private constructor(
         private readonly value: T | undefined,
@@ -229,7 +229,7 @@ export class Either<T, E> {
     public zip<U>(other: Either<U, E>): Either<[T, U], E> {
         return this.isError() 
             ? Either.Error(this.getError())
-            : other.isError() 
+            : other.isError()
                 ? Either.Error(other.getError())
                 : Either.Ok([this.getValue(), other.getValue()]);
     }
@@ -369,7 +369,7 @@ export class Either<T, E> {
      *     .map(x => x * 2);
      * ```
      */
-    public tap(fn: (value: T) => void): Either<T, E> {
+    public tap(fn: (value: T) => void): this {
         if (this.isOk()) fn(this.value!);
         return this;
     }
@@ -385,7 +385,7 @@ export class Either<T, E> {
      *     .recover(err => 'default');
      * ```
      */
-    public tapError(fn: (error: E) => void): Either<T, E> {
+    public tapError(fn: (error: E) => void): this {
         if (this.isError()) fn(this.error!);
         return this;
     }

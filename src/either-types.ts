@@ -56,13 +56,19 @@ function inspectObject(data: object): string {
  * @returns String representation of the error
  */
 function extractErrorMessage(error: unknown): string {
+    const getErrorIfString = (error: unknown) => {
+        return typeof error === "string"
+            ? error
+            : isObject(error)
+    }
+    const isObject = (error: unknown) => {
+        return typeof error === "object" && error !== null
+            ? inspectObject(error)
+            : String(error)
+    }
   return error instanceof Error
     ? error.message
-    : typeof error === "string"
-    ? error
-    : typeof error === "object" && error !== null
-    ? inspectObject(error)
-    : String(error);
+    : getErrorIfString(error);
 }
 
 /**
