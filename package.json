@@ -1,6 +1,6 @@
 {
   "name": "either-monad-library",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Functional error handling with Either monad for TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
